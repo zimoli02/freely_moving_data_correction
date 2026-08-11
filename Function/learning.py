@@ -15,7 +15,7 @@ current_script_path = Path(__file__).resolve()
 parent_dir = current_script_path.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-import Functions.inference as inference
+import Function.inference as inference
 
 
 iteration = 0

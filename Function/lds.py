@@ -42,6 +42,7 @@ def SteadyStateVariance(e,n):
     if q >= 0: return (q + np.sqrt(q**2 + 4*q))*e/2
     else: return 'no steady state'
 
+
 def ApplyFilter(a1, p1, e, n, y, steady_state = False):
     timepoints = len(y)
     a, p, F = np.zeros(timepoints+1, dtype = np.double), np.zeros(timepoints+1, dtype = np.double), np.zeros(timepoints, dtype = np.double)
