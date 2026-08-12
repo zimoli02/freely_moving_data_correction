@@ -1,37 +1,33 @@
-import cv2
 import numpy as np
 import pandas as pd
 
-import h5py
-from datetime import datetime, timedelta
 import torch
 
 
 import sys
 from pathlib import Path
 current_script_path = Path(__file__).resolve()
-
-functions_dir = current_script_path.parents[0] / 'Functions'
-sys.path.insert(0, str(functions_dir))
-import learning
-import inference
+parent_dir = current_script_path.parent.parent
+sys.path.insert(0, str(parent_dir))
+import Function.learning as learning
+import Function.inference as inference
+import Function.path as path
      
 class Kinematics:
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, data, node_name):
+        self.node_name = node_name
+        self.mouse_pos = data[node_name]
         self.manual_parameters = self.Get_Manual_Parameters()
         self.parameters = {}
         self.filterRes = None
         self.smoothRes = None
-        self.mouse = None
         
-    def Run(self, mouse=None):
-        self.mouse = mouse
+    def Run(self):
         self.Infer_Parameters()
         self.Inference() 
         
     def Get_Manual_Parameters(self):
-        dt = 0.1
+        dt = 0.0303
         pos_x0, pos_y0 = 0, 0
         vel_x0, vel_y0 = 0.0, 0.0
         acc_x0, acc_y0 = 0.0, 0.0
@@ -131,33 +127,28 @@ class Kinematics:
         return sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value[0], B, m0, V0, Z, R
     
     def Get_Observations(self):
-        active_chunk = self.mouse.active_chunk
-        mouse_pos = self.session.mouse_pos[active_chunk[0] + pd.Timedelta('2H'):active_chunk[0] + pd.Timedelta('4H')]
+        mouse_pos = self.mouse_pos
         return mouse_pos
     
     def Infer_Parameters(self):
-        try:
-            P = np.load('../../SocialData/LDS_Parameters/' + self.mouse.type + '_' + self.mouse.mouse + '_Parameters.npz', allow_pickle=True)
-            sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, V0, Z, R = P['sigma_a'].item(), P['sigma_x'].item(), P['sigma_y'].item(), P['sqrt_diag_V0_value'].item(), P['B'], P['Qe'], P['m0'], P['V0'], P['Z'], P['R']
-        except FileNotFoundError:
-            mouse_pos = self.Get_Observations()
-            obs = np.transpose(mouse_pos[["x", "y"]].to_numpy())
-            
-            params = self.manual_parameters
-            sigma_a = params['sigma_a']
-            sigma_x = params['sigma_x']
-            sigma_y = params['sigma_y']
-            sqrt_diag_V0_value = params['sqrt_diag_V0_value']
-            B = params['B']
-            Qe = params['Qe']
-            m0 = params['m0']
-            V0 = params['V0']
-            Z = params['Z']
-            R = params['R']
+        mouse_pos = self.Get_Observations()
+        obs = np.transpose(mouse_pos[["x", "y"]].to_numpy())
+        
+        params = self.manual_parameters
+        sigma_a = params['sigma_a']
+        sigma_x = params['sigma_x']
+        sigma_y = params['sigma_y']
+        sqrt_diag_V0_value = params['sqrt_diag_V0_value']
+        B = params['B']
+        Qe = params['Qe']
+        m0 = params['m0']
+        V0 = params['V0']
+        Z = params['Z']
+        R = params['R']
 
-            sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, m0, V0, Z, R = self.Learn_Parameters(obs, sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, Z)
-            np.savez('../../SocialData/LDS_Parameters/'  + self.mouse.type + '_' + self.mouse.mouse + '_Parameters.npz', sigma_a = sigma_a, sigma_x = sigma_x, sigma_y = sigma_y, sqrt_diag_V0_value = sqrt_diag_V0_value, B = B, Qe = Qe, m0 = m0, V0 = V0, Z = Z, R = R)
-            print('Inferring LDS Parameters Completed')
+        sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, m0, V0, Z, R = self.Learn_Parameters(obs, sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, Z)
+        np.savez(f'{path.data_path}/Parameters/{self.node_name}.npz', sigma_a = sigma_a, sigma_x = sigma_x, sigma_y = sigma_y, sqrt_diag_V0_value = sqrt_diag_V0_value, B = B, Qe = Qe, m0 = m0, V0 = V0, Z = Z, R = R)
+        print('Inferring LDS Parameters Completed', flush=True)
         
         parameters = {'sigma_a': sigma_a,
                     'sigma_x': sigma_x,
@@ -173,37 +164,34 @@ class Kinematics:
         self.parameters = parameters
     
     def Inference(self):
-        try:
-            filterRes = np.load('../../SocialData/LDS/' + self.session.start +'_filterRes.npz')
-            smoothRes = np.load('../../SocialData/LDS/' + self.session.start +'_smoothRes.npz')
-        except FileNotFoundError:
-            obs = np.transpose(self.session.mouse_pos[["x", "y"]].to_numpy())
+        obs = np.transpose(self.mouse_pos[["x", "y"]].to_numpy())
+        
+        params = self.parameters
+        sigma_a = params['sigma_a']
+        B = params['B']
+        Qe = params['Qe']
+        m0 = params['m0']
+        V0 = params['V0']
+        Z = params['Z']
+        R = params['R']
+
+        Q = (sigma_a**2) * Qe
+
+        # Filtering
+        filterRes = inference.filterLDS_SS_withMissingValues_np(
+            y=obs, B=B, Q=Q, m0=m0, V0=V0, Z=Z, R=R)
+        np.savez_compressed(f'{path.data_path}/filterRes/{self.node_name}.npz', **filterRes)
             
-            params = self.parameters
-            sigma_a = params['sigma_a']
-            B = params['B']
-            Qe = params['Qe']
-            m0 = params['m0']
-            V0 = params['V0']
-            Z = params['Z']
-            R = params['R']
-
-            Q = (sigma_a**2) * Qe
-
-            # Filtering
-            filterRes = inference.filterLDS_SS_withMissingValues_np(
-                y=obs, B=B, Q=Q, m0=m0, V0=V0, Z=Z, R=R)
-            np.savez_compressed('../SocialData/LDS/' + self.session.start +'_filterRes.npz', **filterRes)
-                
-            # Smoothing
-            smoothRes = inference.smoothLDS_SS( 
-                B=B, xnn=filterRes["xnn"], Vnn=filterRes["Vnn"],
-                xnn1=filterRes["xnn1"], Vnn1=filterRes["Vnn1"], m0=m0, V0=V0)
-            np.savez_compressed('../../SocialData/LDS/' + self.session.start +'_smoothRes.npz', **smoothRes) 
-            print('Inference Completed')
+        # Smoothing
+        smoothRes = inference.smoothLDS_SS( 
+            B=B, xnn=filterRes["xnn"], Vnn=filterRes["Vnn"],
+            xnn1=filterRes["xnn1"], Vnn1=filterRes["Vnn1"], m0=m0, V0=V0)
+        np.savez_compressed(f'{path.data_path}/smoothRes/{self.node_name}.npz', **smoothRes) 
+        print('Inference Completed', flush = True)
             
         self.filterRes = filterRes
         self.smoothRes = smoothRes
+
 
 
 def main():

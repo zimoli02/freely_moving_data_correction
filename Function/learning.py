@@ -1,12 +1,10 @@
 import math
 import time
 import numpy as np
-import scipy.optimize
 import torch
 import warnings
 import copy
 
-import utils
 
 import sys
 from pathlib import Path
@@ -19,157 +17,6 @@ import Function.inference as inference
 
 
 iteration = 0
-
-
-def scipy_optimize_SS_tracking_fullV0(y, B, sigma_a0, Qe, Z, diag_R_0,
-                                      m0_0, V0_0, max_iter, disp=True):
-    iL_V0 = np.tril_indices(V0_0.shape[0])
-
-    def get_coefs_from_params(sigma_a, diag_R, m0, V0, iL_V0=iL_V0):
-        V0_chol = np.linalg.cholesky(V0)
-        L_coefs = V0_chol[iL_V0]
-        x = np.insert(np.concatenate([diag_R, m0, L_coefs]), 0, sigma_a)
-        return x
-
-    def get_params_from_coefs(x, iL_V0=iL_V0, sigma_a0=sigma_a0,
-                              diag_R_0=diag_R_0, m0_0=m0_0, V0_0=V0_0):
-        cur = 0
-        sigma_a = x[slice(cur, cur+1)]
-        cur += len(sigma_a)
-        diag_R = x[slice(cur, cur+len(diag_R_0))]
-        cur += len(diag_R)
-        m0 = x[slice(cur, cur+len(m0_0))]
-        cur += len(m0)
-        M = V0_0.shape[0]
-        L_coefs = x[slice(cur, cur+int(M*(M+1)/2))]
-        L_V0 = np.zeros(shape=V0_0.shape)
-        L_V0[iL_V0] = L_coefs
-        V0 = L_V0 @ L_V0.T
-
-        return sigma_a, diag_R, m0, V0
-
-    def optim_criterion(x):
-        sigma_a, diag_R, m0, V0 = get_params_from_coefs(x)
-        R = np.diag(diag_R)
-        kf = inference.filterLDS_SS_withMissingValues(y=y, B=B, Q=sigma_a*Qe,
-                                                      m0=m0, V0=V0, Z=Z, R=R)
-        answer = 0
-        N = kf["Sn"].shape[2]
-        for n in range(N):
-            innov = kf["innov"][:, :, n]
-            Sn = kf["Sn"][:,:,n] 
-
-            Sn_inv = np.linalg.inv(Sn)
-            answer += np.linalg.slogdet(Sn)[1]
-            answer += innov.T @ Sn_inv @ innov
-        return answer
-
-    def callback(x):
-        global iteration
-        iteration += 1
-
-        sigma_a, diag_R, m0, V0 = get_params_from_coefs(x)
-        optim_value = optim_criterion(x=x)
-        print("Iteration: {:d}".format(iteration))
-        print("optim criterion: {:f}".format(optim_value.item()))
-        print("sigma_a={:f}".format(sigma_a.item()))
-        print("diag_R:")
-        print(diag_R)
-        print("m0:")
-        print(m0)
-        print("V0:")
-        print(V0)
-
-    x0 = get_coefs_from_params(sigma_a=sigma_a0, diag_R=diag_R_0,
-                               m0=m0_0, V0=V0_0)
-    options={"disp": disp, "maxiter": max_iter}
-    opt_res = scipy.optimize.minimize(optim_criterion, x0, method="Nelder-Mead",
-                                      callback=callback, options=options)
-    import pdb; pdb.set_trace()
-
-
-def scipy_optimize_SS_tracking_diagV0(y, B, sigma_ax0, sigma_ay0, Qe, Z,
-                                      sqrt_diag_R_0, m0_0, sqrt_diag_V0_0,
-                                      max_iter=50, disp=True):
-
-    def get_coefs_from_params(sigma_ax, sigma_ay, sqrt_diag_R, m0,
-                              sqrt_diag_V0):
-        x = np.concatenate([[sigma_ax, sigma_ay], sqrt_diag_R, m0,
-                            sqrt_diag_V0])
-        return x
-
-    def get_params_from_coefs(x, sigma_ax0=sigma_ax0, sigma_ay0=sigma_ay0,
-                              sqrt_diag_R_0=sqrt_diag_R_0, m0_0=m0_0,
-                              sqrt_diag_V0_0=sqrt_diag_V0_0):
-        cur = 0
-        sigma_ax = x[slice(cur, cur+1)]
-        cur += len(sigma_ax)
-        sigma_ay = x[slice(cur, cur+1)]
-        cur += len(sigma_ay)
-        sqrt_diag_R = x[slice(cur, cur+len(sqrt_diag_R_0))]
-        cur += len(sqrt_diag_R)
-        m0 = x[slice(cur, cur+len(m0_0))]
-        cur += len(m0)
-        sqrt_diag_V0 = x[slice(cur, cur+len(sqrt_diag_V0_0))]
-
-        return sigma_ax, sigma_ay, sqrt_diag_R, m0, sqrt_diag_V0
-
-    def optim_criterion(x):
-        sigma_ax, sigma_ay, sqrt_diag_R, m0, sqrt_diag_V0 = \
-            get_params_from_coefs(x)
-        V0 = np.diag(sqrt_diag_V0**2)
-        R = np.diag(sqrt_diag_R**2)
-        # build Q from Qe, sigma_ax, sigma_ay
-        Q = utils.buildQfromQe_np(Qe=Qe, sigma_ax=sigma_ax, sigma_ay=sigma_ay)
-
-        kf = inference.filterLDS_SS_withMissingValues(y=y, B=B, Q=Q,
-                                                      m0=m0, V0=V0, Z=Z, R=R)
-        answer = 0
-        N = kf["Sn"].shape[2]
-        for n in range(N):
-            innov = kf["innov"][:, :, n]
-            Sn = kf["Sn"][:, :, n]
-
-            Sn_inv = np.linalg.inv(Sn)
-            answer += np.linalg.slogdet(Sn)[1]
-            answer += innov.T @ Sn_inv @ innov
-        return answer
-
-    def callback(x):
-        global iteration
-        iteration += 1
-
-        sigma_ax, sigma_ay, sqrt_diag_R, m0, sqrt_diag_V0 = \
-            get_params_from_coefs(x)
-        optim_value = optim_criterion(x=x)
-        print("Iteration: {:d}".format(iteration))
-        print("optim criterion: {:f}".format(optim_value.item()))
-        print("sigma_ax={:f}".format(sigma_ax.item()))
-        print("sigma_ay={:f}".format(sigma_ay.item()))
-        print("sqrt_diag_R:")
-        print(sqrt_diag_R)
-        print("m0:")
-        print(m0)
-        print("sqrt_diag_V0:")
-        print(sqrt_diag_V0)
-
-    x0 = get_coefs_from_params(sigma_ax=sigma_ax0, sigma_ay=sigma_ay0,
-                               sqrt_diag_R=sqrt_diag_R_0, m0=m0_0,
-                               sqrt_diag_V0=sqrt_diag_V0_0)
-    options = {"disp": disp, "maxiter": max_iter}
-    opt_res = scipy.optimize.minimize(optim_criterion, x0,
-                                      method="Nelder-Mead", callback=callback,
-                                      options=options)
-    sigma_ax, sigma_ay, sqrt_diag_R, m0, sqrt_diag_V0 = \
-        get_params_from_coefs(opt_res["x"])
-    x = {"sigma_ax": sigma_ax, "sigma_ay": sigma_ay,
-         "sqrt_diag_R": sqrt_diag_R, "m0": m0,
-         "sqrt_diag_V0": sqrt_diag_V0}
-    answer = {"fun": opt_res["fun"], "message": opt_res["message"],
-              "nfev": opt_res["nfev"], "nit": opt_res["nit"],
-              "status": opt_res["status"], "success": opt_res["success"],
-              "x": x}
-    return answer
 
 def torch_lbfgs_optimize_SS_tracking_diagV0(y, B, sigma_a0, Qe, Z,
                                             sqrt_diag_R_0, m0_0, sqrt_diag_V0_0,
@@ -249,10 +96,10 @@ def torch_lbfgs_optimize_SS_tracking_diagV0(y, B, sigma_a0, Qe, Z,
             break
         log_like.append(-curEval.item())
         elapsed_time.append(time.time() - start_time)
-        print("--------------------------------------------------------------------------------")
-        print(f"epoch: {epoch}")
-        print(f"likelihood: {log_like[-1]}")
-        if vars_to_estimate["sigma_a"]:
+        print("--------------------------------------------------------------------------------", flush=True)
+        print(f"epoch: {epoch}", flush=True)
+        print(f"likelihood: {log_like[-1]}", flush=True)
+        '''if vars_to_estimate["sigma_a"]:
             print("sigma_a: ")
             print(sigma_a)
         if vars_to_estimate["sqrt_diag_R"]:
@@ -263,7 +110,7 @@ def torch_lbfgs_optimize_SS_tracking_diagV0(y, B, sigma_a0, Qe, Z,
             print(m0)
         if vars_to_estimate["sqrt_diag_V0"]:
             print("sqrt_diag_V0: ")
-            print(sqrt_diag_V0)
+            print(sqrt_diag_V0)'''
         if epoch > 0 and log_like[-1] - log_like[-2] < tol:
             termination_info = "success: converged"
             break
@@ -336,17 +183,17 @@ def torch_adam_optimize_SS_tracking_diagV0(y, B, sigma_a0, Qe, Z,
         optimizer.step()
         log_like.append(-curEval.item())
         elapsed_time.append(time.time() - start_time)
-        print("--------------------------------------------------------------------------------")
-        print(f"iteration: {i} ({max_iter})")
-        print(f"logLike: {-curEval}")
-        print("sigma_a: ")
-        print(sigma_a)
-        print("sqrt_diag_R: ")
-        print(sqrt_diag_R)
-        print("m0: ")
-        print(m0)
-        print("sqrt_diag_V0: ")
-        print(sqrt_diag_V0)
+        print("--------------------------------------------------------------------------------", flush=True)
+        print(f"iteration: {i} ({max_iter})", flush=True)
+        print(f"logLike: {-curEval}", flush=True)
+        print("sigma_a: ", flush=True)
+        print(sigma_a, flush=True)
+        print("sqrt_diag_R: ", flush=True)
+        print(sqrt_diag_R, flush=True)
+        print("m0: ", flush=True)
+        print(m0, flush=True)
+        print("sqrt_diag_V0: ", flush=True)
+        print(sqrt_diag_V0, flush=True)
 
     for i in range(len(x)):
         x[i].requires_grad = False
