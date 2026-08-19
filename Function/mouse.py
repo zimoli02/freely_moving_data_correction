@@ -14,9 +14,10 @@ import Function.inference as inference
 import Function.path as path
      
 class Kinematics:
-    def __init__(self, data, node_name):
+    def __init__(self, data, node_name, use_parameter = False):
         self.node_name = node_name
         self.mouse_pos = data[node_name]
+        self.use_parameter = use_parameter
         self.manual_parameters = self.Get_Manual_Parameters()
         self.parameters = {}
         self.filterRes = None
@@ -76,6 +77,15 @@ class Kinematics:
                     'V0': V0,
                     'Z': Z,
                     'R': R}
+        
+        if self.use_parameter:
+            parameter_file_path = f'{path.data_path}/Parameters/{self.node_name}.npz'
+            if Path(parameter_file_path).exists():
+                loaded_params = np.load(parameter_file_path)
+                parameters = {key: loaded_params[key] for key in loaded_params.files}
+                print(f"Loaded parameters from {parameter_file_path}")
+            else:
+                print(f"Parameter file {parameter_file_path} does not exist. Using manual parameters.")
         return parameters
     
     def Learn_Parameters(self, y, sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, Z):
@@ -147,7 +157,6 @@ class Kinematics:
         R = params['R']
 
         sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, m0, V0, Z, R = self.Learn_Parameters(obs, sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, Z)
-        np.savez(f'{path.data_path}/Parameters/{self.node_name}.npz', sigma_a = sigma_a, sigma_x = sigma_x, sigma_y = sigma_y, sqrt_diag_V0_value = sqrt_diag_V0_value, B = B, Qe = Qe, m0 = m0, V0 = V0, Z = Z, R = R)
         print('Inferring LDS Parameters Completed', flush=True)
         
         parameters = {'sigma_a': sigma_a,
@@ -180,13 +189,12 @@ class Kinematics:
         # Filtering
         filterRes = inference.filterLDS_SS_withMissingValues_np(
             y=obs, B=B, Q=Q, m0=m0, V0=V0, Z=Z, R=R)
-        np.savez_compressed(f'{path.data_path}/filterRes/{self.node_name}.npz', **filterRes)
             
         # Smoothing
         smoothRes = inference.smoothLDS_SS( 
             B=B, xnn=filterRes["xnn"], Vnn=filterRes["Vnn"],
             xnn1=filterRes["xnn1"], Vnn1=filterRes["Vnn1"], m0=m0, V0=V0)
-        np.savez_compressed(f'{path.data_path}/smoothRes/{self.node_name}.npz', **smoothRes) 
+
         print('Inference Completed', flush = True)
             
         self.filterRes = filterRes

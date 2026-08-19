@@ -1,4 +1,4 @@
-name: deeplabcut
+name: dlc-env
 channels:
   - conda-forge
   - defaults
@@ -95,7 +95,6 @@ dependencies:
       - h11==0.16.0
       - h5py==3.16.0
       - heapdict==1.0.1
-      - hf-xet==1.5.0.dev1
       - hsluv==5.0.4
       - httpcore==1.0.9
       - httpx==0.28.1
@@ -170,9 +169,9 @@ dependencies:
       - pyopengl==3.1.10
       - pyparsing==3.3.2
       - pyproject-hooks==1.2.0
-      - pyside6==6.11.0
-      - pyside6-addons==6.11.0
-      - pyside6-essentials==6.11.0
+      - pyside6==6.9.3
+      - pyside6-addons==6.9.3
+      - pyside6-essentials==6.9.3
       - python-dateutil==2.9.0.post0
       - pytz==2026.1.post1
       - pyyaml==6.0.3
@@ -191,7 +190,7 @@ dependencies:
       - scipy==1.15.3
       - shapely==2.1.2
       - shellingham==1.5.4
-      - shiboken6==6.11.0
+      - shiboken6==6.9.3
       - six==1.17.0
       - slicerator==1.1.0
       - snowballstemmer==3.0.1
@@ -227,4 +226,4 @@ dependencies:
       - wcwidth==0.6.0
       - wrapt==2.2.0rc11
       - zipp==3.23.1
-prefix: /Users/zimoli/anaconda3/envs/deeplabcut
+
