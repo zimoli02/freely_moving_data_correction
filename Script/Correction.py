@@ -18,7 +18,7 @@ def main():
     node_name = args.node_name
 
     # Turn .h5 file to pandas dataframe 
-    bodypart_data = util.h5_to_pd(info.file_name)
+    bodypart_data = util.h5_to_pd()
 
 
     # Filtering and smoothing the positions

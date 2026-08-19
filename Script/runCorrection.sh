@@ -1,79 +1,61 @@
 #!/bin/bash
+## delete all SBATCH command if you run this locally (not on cluster)
+#SBATCH --job-name=Correction
+#SBATCH --partition=day
+#SBATCH --time=2:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=20G
+#SBATCH --output=logs/%x-%A_%a.out
+#SBATCH --mail-type=END,FAIL
+set -euo pipefail
 
-INPUT_FILE="NODE.txt"
-PYTHON_SCRIPT="Correction.py"
-MAX_PARALLEL=12
+cd "$SLURM_SUBMIT_DIR"
 
-pids=()
+module reset
+module load miniconda
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate dlc-env
 
-wait_for_slot() {
-    while (( ${#pids[@]} >= MAX_PARALLEL )); do
-        for i in "${!pids[@]}"; do
-            if ! kill -0 "${pids[$i]}" 2>/dev/null; then
-                wait "${pids[$i]}"
-                status=$?
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
 
-                if (( status != 0 )); then
-                    echo "[WARN] A job (PID ${pids[$i]}) exited with status $status"
-                fi
+line=$(sed -n "${SLURM_ARRAY_TASK_ID}p" NODE.txt)
 
-                unset 'pids[$i]'
-            fi
-        done
+# Select the nth nonempty, non-comment line.
+line=$(
+    awk -v n="$SLURM_ARRAY_TASK_ID" '
+        NF && $1 !~ /^#/ {
+            count++
+            if (count == n) {
+                print
+                exit
+            }
+        }
+    ' inputCorrection.txt
+)
 
-        pids=("${pids[@]}")
-        sleep 0.5
-    done
-}
+# Remove a possible Windows carriage return.
+line="${line%$'\r'}"
 
-if [[ ! -f "$INPUT_FILE" ]]; then
-    echo "[ERROR] Input file not found: $INPUT_FILE"
+if [[ -z "${line//[[:space:]]/}" ]]; then
+    echo "Input line ${SLURM_ARRAY_TASK_ID} is empty"
     exit 1
 fi
 
-mkdir -p logs
+# The input line is the node name.
+node_name="$(echo "$line" | xargs)"
 
-while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip empty lines.
-    [[ -z "${line//[[:space:]]/}" ]] && continue
+echo "Job ID: $SLURM_JOB_ID"
+echo "Array task: $SLURM_ARRAY_TASK_ID"
+echo "Host: $(hostname)"
+echo "Python: $(command -v python)"
+echo "node: $node_name"
 
-    # Skip lines beginning with #, including whitespace before #.
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+echo "Started: $(date)"
 
-    wait_for_slot
+python -u Correction.py \
+    --node_name "$node_name"
 
-    node_name="${line%%, *}"
-    node_name="$(echo "$node_name" | xargs)"
-    
-    if [[ -z "$node_name" ]]; then
-        continue
-    fi
-
-    wait_for_slot
-
-    log_file="logs/${node_name}.log"
-
-    echo "Launching Session:"
-    echo "  node_name = $node_name"
-    echo "  log        = $log_file"
-
-    python "$PYTHON_SCRIPT" \
-        --node_name "$node_name" \
-        > "$log_file" 2>&1 &
-
-    pids+=("$!")
-
-done < "$INPUT_FILE"
-
-echo "All jobs launched. Waiting for completion..."
-
-for pid in "${pids[@]}"; do
-    wait "$pid"
-    status=$?
-
-    if (( status != 0 )); then
-        echo "[WARN] PID $pid exited with status $status"
-    fi
-done
-
-echo "All nodes finished."
+echo "Finished: $(date)"
