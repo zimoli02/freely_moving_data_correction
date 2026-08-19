@@ -1,8 +1,8 @@
 #!/bin/bash
 
-INPUT_FILE="inputCorrection.txt"
+INPUT_FILE="NODE.txt"
 PYTHON_SCRIPT="Correction.py"
-MAX_PARALLEL=10
+MAX_PARALLEL=12
 
 pids=()
 

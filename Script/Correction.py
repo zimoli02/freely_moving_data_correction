@@ -6,7 +6,8 @@ import os
 import argparse
 
 sys.path.append(os.path.abspath('../'))
-import Function.path as path
+import Script.INFORMATION as info
+import Function.utility as util
 import Function.mouse as mouse
 
 
@@ -14,29 +15,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--node_name", required=True)
     args = parser.parse_args()
-
     node_name = args.node_name
 
+    # Turn .h5 file to pandas dataframe 
+    bodypart_data = util.h5_to_pd(info.file_name)
 
-    file_path = path.data_path
-    file_name = 'ribo8s002_20260804_0001DLC_resnet50_stickerNoseScopeAug4shuffle1_100000.h5'
-    df = pd.read_hdf(f'{file_path}/{file_name}')
-    
-    bodypart_data = {
-    bodypart: (
-        df.xs(bodypart, level="bodyparts", axis=1)
-          .droplevel("scorer", axis=1)
-          .loc[:, ["x", "y", "likelihood"]]
-          .copy()
-    )
-    for bodypart in df.columns.get_level_values("bodyparts").unique()}
 
-    processed_data = mouse.Kinematics(bodypart_data, node_name, use_parameter = False)
+    # Filtering and smoothing the positions
+    processed_data = mouse.Kinematics(bodypart_data, node_name, info.video_frame_rate, use_parameter = False)
     processed_data.Run()
     
-    np.savez(f'{path.data_path}/Parameters/{processed_data.node_name}.npz', **processed_data.parameters)    
-    np.savez_compressed(f'{path.data_path}/filterRes/{processed_data.node_name}.npz', **processed_data.filterRes)
-    np.savez_compressed(f'{path.data_path}/smoothRes/{processed_data.node_name}.npz', **processed_data.smoothRes) 
+    # Save processed data
+    util.save_processed_data(processed_data)
+    
+    
+    # Save processed data to .h5 format
+    util.
+    
     
 if __name__ == "__main__":
     main()

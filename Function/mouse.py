@@ -11,12 +11,13 @@ parent_dir = current_script_path.parent.parent
 sys.path.insert(0, str(parent_dir))
 import Function.learning as learning
 import Function.inference as inference
-import Function.path as path
+import Script.INFORMATION as info
      
 class Kinematics:
-    def __init__(self, data, node_name, use_parameter = False):
+    def __init__(self, data, node_name, video_frame_rate, use_parameter = False):
         self.node_name = node_name
         self.mouse_pos = data[node_name]
+        self.video_frame_rate = video_frame_rate
         self.use_parameter = use_parameter
         self.manual_parameters = self.Get_Manual_Parameters()
         self.parameters = {}
@@ -28,7 +29,7 @@ class Kinematics:
         self.Inference() 
         
     def Get_Manual_Parameters(self):
-        dt = 0.0303
+        dt = 1/self.video_frame_rate
         pos_x0, pos_y0 = 0, 0
         vel_x0, vel_y0 = 0.0, 0.0
         acc_x0, acc_y0 = 0.0, 0.0
@@ -79,7 +80,7 @@ class Kinematics:
                     'R': R}
         
         if self.use_parameter:
-            parameter_file_path = f'{path.data_path}/Parameters/{self.node_name}.npz'
+            parameter_file_path = f'{info.data_path}/Parameters/{self.node_name}.npz'
             if Path(parameter_file_path).exists():
                 loaded_params = np.load(parameter_file_path)
                 parameters = {key: loaded_params[key] for key in loaded_params.files}
