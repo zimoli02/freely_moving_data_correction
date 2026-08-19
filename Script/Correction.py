@@ -18,8 +18,9 @@ def main():
     node_name = args.node_name
 
 
-    file_path = f'{path.data_path}/ribo8s002_20260804_0001DLC_resnet50_stickerNoseScopeAug4shuffle1_100000.h5'
-    df = pd.read_hdf(file_path)
+    file_path = path.data_path
+    file_name = 'ribo8s002_20260804_0001DLC_resnet50_stickerNoseScopeAug4shuffle1_100000.h5'
+    df = pd.read_hdf(f'{file_path}/{file_name}')
     
     bodypart_data = {
     bodypart: (
