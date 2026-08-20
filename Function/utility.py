@@ -26,7 +26,11 @@ def h5_to_pd():
     return bodypart_data
 
 def save_processed_data(processed_data):
-    np.savez(f'{info.parameter_path}/Parameters/{processed_data.node_name}.npz', **processed_data.parameters)    
+    os.makedirs(info.parameter_path, exist_ok=True)
+    os.makedirs(f'{info.data_path}/filterRes', exist_ok=True)
+    os.makedirs(f'{info.data_path}/smoothRes', exist_ok=True)
+    
+    np.savez(f'{info.parameter_path}/{processed_data.node_name}.npz', **processed_data.parameters)    
     np.savez_compressed(f'{info.data_path}/filterRes/{processed_data.node_name}.npz', **processed_data.filterRes)
     np.savez_compressed(f'{info.data_path}/smoothRes/{processed_data.node_name}.npz', **processed_data.smoothRes) 
     print('Finish saving processed data\n', flush = True)

@@ -80,7 +80,7 @@ class Kinematics:
                     'R': R}
         
         if self.use_parameter:
-            parameter_file_path = f'{info.data_path}/Parameters/{self.node_name}.npz'
+            parameter_file_path = f'{info.parameter_path}/{self.node_name}.npz'
             if Path(parameter_file_path).exists():
                 loaded_params = np.load(parameter_file_path)
                 parameters = {key: loaded_params[key] for key in loaded_params.files}
@@ -90,7 +90,7 @@ class Kinematics:
         return parameters
     
     def Learn_Parameters(self, y, sigma_a, sigma_x, sigma_y, sqrt_diag_V0_value, B, Qe, m0, Z):
-        lbfgs_max_iter = 2
+        lbfgs_max_iter = 4
         lbfgs_tolerance_grad = 1e-3
         lbfgs_tolerance_change = 1e-3
         lbfgs_lr = 1.0
