@@ -8,6 +8,7 @@
 #SBATCH --mem=20G
 #SBATCH --output=logs/%x-%A_%a.out
 #SBATCH --mail-type=END,FAIL
+
 set -euo pipefail
 
 cd "$SLURM_SUBMIT_DIR"

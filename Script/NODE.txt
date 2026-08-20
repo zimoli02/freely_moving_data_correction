@@ -1,7 +1,6 @@
 nose
 leftEar
 rightEar
-scope
 neck
 back
 tailBase

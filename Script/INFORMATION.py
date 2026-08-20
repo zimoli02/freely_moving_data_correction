@@ -1,6 +1,6 @@
 # information about your video
 file_name = 'ribo8s002_20260804_0001DLC_resnet50_stickerNoseScopeAug4shuffle1_100000.h5' # 'name_of_your_dlc_file.h5'
-video_name = 'name_of_your_video.mp4'
+video_name = 'name_of_your_original_ideo.mp4'
 video_frame_rate = 33 # Hz
 
 # information about the folder (not the name!) you want to retrieve/save the data
