@@ -34,7 +34,7 @@ line=$(
                 exit
             }
         }
-    ' inputCorrection.txt
+    ' NODE.txt
 )
 
 # Remove a possible Windows carriage return.
