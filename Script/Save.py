@@ -29,7 +29,7 @@ def main():
     
     
     # overlay processed position to original video
-    
+    util.overlay_points_on_video(node_names)
     
     
 if __name__ == "__main__":

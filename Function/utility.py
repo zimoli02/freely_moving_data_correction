@@ -131,7 +131,7 @@ def save_smoothed_data_to_h5(node_names):
     os.makedirs(output_h5_path, exist_ok=True)
 
     corrected_df.to_hdf(
-        f'{output_h5_path}/{info.file_name}.h5',
+        f'{output_h5_path}/correct.h5',
         key="df_with_missing",
         mode="w",
         format="table",
@@ -165,7 +165,6 @@ def overlay_points_on_video(node_names, point_radius = 7):
             thickness,
             lineType=cv2.LINE_AA,
         )
-
 
     def draw_positions(frame, positions, frame_index):
         for node_name in node_names:
@@ -207,8 +206,8 @@ def overlay_points_on_video(node_names, point_radius = 7):
             )
             
     # Load tracking DataFrames
-    raw_df = pd.read_hdf(info.raw_data_path)
-    processed_df = pd.read_hdf(info.processed_data_path)
+    raw_df = pd.read_hdf(f'{info.raw_data_path}/{info.file_name}')
+    processed_df = pd.read_hdf(f'{info.raw_data_path}/correct.h5')
 
     if info.processed_video_path is None:
         if not hasattr(info, "processed_video_path"):
