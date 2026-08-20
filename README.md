@@ -4,20 +4,16 @@
    ```
     ssh netid@clustername.ycrc.yale.edu
    ```
-   
-2. Create a `dlc_correction` folder under your project directory:
-   ```
-    mkdir dlc_correction
-   ```
-3. Clone this repository:
+and then navigate to your own directory that contains folders for your projects.
+2. Clone this repository:
    ```
     git clone https://github.com/zimoli02/freely_moving_data_correction.git
    ```
-4. Go to the `freely_moving_data_correction` folder, inside you should see two subfolders, `Function` and `Script`:
+3. Go to the `freely_moving_data_correction` folder, inside you should see two subfolders, `Function` and `Script`:
    ``` 
     cd freely_moving_data_correction
    ```
-5. I recommend creating a new folder `Data` to store the files if you are transferring from your local computer, or you can ignore this if you're directly computing deeplabcut on the same cluster and has data stored elsewhere.
+4. I recommend creating a new folder `Data` to store the files if you are transferring from your local computer, or you can ignore this if you're directly computing deeplabcut on the same cluster and has data stored elsewhere.
    ```
     mkdir Data
    ```
