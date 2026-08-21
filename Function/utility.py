@@ -67,8 +67,7 @@ def save_smoothed_data_to_h5(node_names):
     available_bodyparts = set(
         corrected_df.columns.get_level_values(bodypart_level)
     )
-    
-    
+      
     corrected_data = {
         node_name: {
             "x": np.load(f"{info.data_path}/smoothRes/{node_name}.npz")['xnN'][0][0],
@@ -137,7 +136,7 @@ def save_smoothed_data_to_h5(node_names):
         format="table",
     )
 
-    print(f"Saved corrected DLC file to: {output_h5_path}", flush = True)
+    print(f"Saved corrected DLC file to: {output_h5_path}/correct.h5", flush = True)
 
 def overlay_points_on_video(node_names, point_radius = 7):
     def draw_title(frame, text):
