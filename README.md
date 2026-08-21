@@ -4,7 +4,7 @@
    ```
     ssh netid@clustername.ycrc.yale.edu
    ```
-and then navigate to your own directory that contains folders for your projects.
+   and then navigate to your own directory that contains folders for your projects.
 2. Clone this repository:
    ```
     git clone https://github.com/zimoli02/freely_moving_data_correction.git
